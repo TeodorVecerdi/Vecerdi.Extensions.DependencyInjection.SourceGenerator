@@ -6,7 +6,7 @@ indent_style = space
 
 # Xml files
 [*.xml]
-indent_size = 2
+indent_size = 4
 
 # C# files
 [*.cs]
@@ -356,21 +356,12 @@ dotnet_naming_symbols.public_static_readonly_fields.applicable_kinds = field
 dotnet_naming_symbols.public_static_readonly_fields.applicable_accessibilities = public, internal, protected, protected_internal, private_protected
 dotnet_naming_symbols.public_static_readonly_fields.required_modifiers = static, readonly
 
-# IDE0305: Simplify collection initialization
-dotnet_diagnostic.IDE0305.severity = suggestion
-
-# IDE0065: Misplaced using directive
-dotnet_diagnostic.IDE0065.severity = silent
-
 #### ReSharper Rules ####
 
 resharper_shader_lab_shader_reference_not_resolved_highlighting = error
 resharper_unity_unknown_resource_highlighting = error
 resharper_value_parameter_not_used_highlighting = hint
 resharper_redundant_anonymous_type_property_name_highlighting = none
-resharper_explicit_caller_info_argument_highlighting = none
-resharper_entity_framework_model_validation_unlimited_string_length_highlighting = none
-resharper_variable_hides_outer_variable_highlighting = none
 resharper_partial_type_with_single_part_highlighting = suggestion
 resharper_not_accessed_positional_property_local_highlighting = suggestion
 resharper_unused_member_local_highlighting = suggestion
