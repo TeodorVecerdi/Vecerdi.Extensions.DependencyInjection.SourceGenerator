@@ -44,6 +44,7 @@
             CA2208; <!-- Instantiate argument exceptions correctly -->
             CA2225; <!-- Operator overloads have named alternates -->
             CA2227; <!-- Collection properties should be read only -->
+            CA2234; <!-- Pass System.Uri objects instead of strings -->
             CA5394; <!-- Do not use insecure randomness -->
             CS1591; <!-- Missing XML comment for publicly visible type or member -->
             IDE0010; <!-- Add missing cases to switch statement -->
