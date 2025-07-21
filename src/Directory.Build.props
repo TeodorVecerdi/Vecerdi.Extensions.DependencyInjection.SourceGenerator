@@ -18,9 +18,14 @@
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
         <NoWarn>$(NoWarn);
+            CA1859;
+            CA2012;
+            CA1000; <!-- Do not declare static members on generic types -->
+            CA1065; <!-- Do not raise exceptions in unexpected locations -->
             CA1002; <!-- Do not expose generic lists -->
             CA1031; <!-- Do not catch general exception types -->
             CA1034; <!-- Nested types should not be visible -->
+            CA1040; <!-- Avoid empty interfaces -->
             CA1054; <!-- URI parameters should not be strings -->
             CA1056; <!-- URI properties should not be strings -->
             CA1062; <!-- Validate arguments of public methods -->
