@@ -279,6 +279,15 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
                 continue;
             }
 
+            if (setter.IsInitOnly) {
+                var propSyntax = classDecl.DescendantNodes().OfType<PropertyDeclarationSyntax>()
+                    .FirstOrDefault(p => semanticModel.GetDeclaredSymbol(p)?.Name == prop.Name);
+                var location = propSyntax?.GetLocation() ?? classDecl.GetLocation();
+                var diagnostic = Diagnostic.Create(DiagnosticDescriptors.InitOnlyProperty, location, prop.Name, typeSymbol.Name);
+                context.ReportDiagnostic(diagnostic);
+                continue;
+            }
+
             // Extract params from the single attribute
             var attr = attributes[0];
             object? key = null;

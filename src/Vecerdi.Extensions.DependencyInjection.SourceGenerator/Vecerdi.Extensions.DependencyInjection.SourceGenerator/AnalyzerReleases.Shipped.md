@@ -1,3 +1,10 @@
+## Release 1.2.0
+
+### Changed Rules
+
+| Rule ID | Category | Severity | Notes                                     |
+|---------|----------|----------|-------------------------------------------|
+| VDI0001 | Usage    | Warning  | Changed to check for init-only properties |
 
 ## Release 1.1.0
 
