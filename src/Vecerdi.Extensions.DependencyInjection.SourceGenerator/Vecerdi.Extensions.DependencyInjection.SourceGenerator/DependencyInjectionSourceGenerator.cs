@@ -71,7 +71,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
                 // Check inheritance from BaseMonoBehaviour
                 if (!InheritsFrom(typeSymbol, BaseMonoBehaviourName, DefaultNamespace)) continue;
 
-                // Check for at least one valid [Inject*] property with setter
+                // Check for at least one valid [Inject*] property
                 var injectProperties = GetInjectProperties(typeSymbol, semanticModel, classDecl, context);
                 if (injectProperties.Count == 0)
                     continue;
@@ -87,14 +87,12 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
             var contextSymbol = compilation.GetSemanticModel(classSyntax.SyntaxTree).GetDeclaredSymbol(classSyntax);
             if (contextSymbol == null) continue;
 
-            // Resilience: Skip if generic (add support later if needed)
             if (contextSymbol.IsGenericType || contextSymbol.TypeParameters.Length > 0) {
                 var diagnostic = Diagnostic.Create(DiagnosticDescriptors.UnsupportedGenericContext, classSyntax.GetLocation(), contextSymbol.Name);
                 context.ReportDiagnostic(diagnostic);
                 continue;
             }
 
-            // Resilience: Warn if multiple contexts (informational)
             if (contextClassTuples.Length > 1) {
                 var diagnostic = Diagnostic.Create(DiagnosticDescriptors.MultipleContexts, classSyntax.GetLocation());
                 context.ReportDiagnostic(diagnostic);
@@ -105,9 +103,6 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
 
             // Extract modifiers from user's syntax (e.g., public, internal)
             var modifiers = string.Join(" ", classSyntax.Modifiers.Select(m => m.Text));
-
-            // Extract type parameters (empty for now, since we skip generics)
-            var typeParams = classSyntax.TypeParameterList?.ToString() ?? "";
 
             // Build the generated code
             var codeBuilder = new StringBuilder();
@@ -128,16 +123,14 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
             }
 
             codeBuilder.AppendLine($$"""
-                                         {{modifiers}} class {{contextClassName}}{{typeParams}}
+                                         {{modifiers}} class {{contextClassName}}
                                          {
                                              public override ITypeInjector? GetTypeInjector(Type type)
                                              {
                                      """);
 
             if (eligibleTypes.Count == 0) {
-                // Resilience: Handle empty case
                 codeBuilder.AppendLine($"            return null; // No eligible types found for context '{contextClassName}'.");
-                // Optional warning
                 var diagnostic = Diagnostic.Create(DiagnosticDescriptors.NoEligibleTypes, classSyntax.GetLocation(), contextClassName);
                 context.ReportDiagnostic(diagnostic);
             } else {
@@ -219,7 +212,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
         }
     }
 
-    // Helper: Format object? as C# literal for codegen (basic types; extend for more)
+    // Helper: Format object? as C# literal for codegen
     private static string FormatAsCSharpLiteral(object? value) {
         if (value == null) return "null";
         if (value is string s) return $"\"{s.Replace("\"", "\\\"")}\"";
@@ -227,7 +220,6 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
         if (value is int or uint or long or ulong or short or ushort or byte or sbyte or float or double or decimal) return value.ToString()!;
         if (value is char c) return $"'{c}'";
 
-        // Fallback for unsupported (e.g., enums, custom types) - could throw or warn
         return "null /* Unsupported key type */";
     }
 
