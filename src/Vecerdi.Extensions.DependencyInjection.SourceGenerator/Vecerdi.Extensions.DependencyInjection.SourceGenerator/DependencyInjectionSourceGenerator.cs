@@ -147,8 +147,8 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
                 context.ReportDiagnostic(diagnostic);
             } else {
                 codeBuilder.AppendLine("""
-                                               return type.FullName switch
-                                               {
+                                                   return type.FullName switch
+                                                   {
                                        """);
                 foreach (var (type, _) in eligibleTypes) {
                     var typeFullName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
