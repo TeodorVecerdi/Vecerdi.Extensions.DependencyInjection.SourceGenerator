@@ -54,7 +54,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
             return;
 
         // Collect all eligible types in the compilation
-        var eligibleTypes = new List<(INamedTypeSymbol TypeSymbol, List<(IPropertySymbol Property, object? Key, bool IsRequired)> Properties)>();
+        var eligibleTypeDictionary = new Dictionary<string, (INamedTypeSymbol TypeSymbol, List<(IPropertySymbol Property, object? Key, bool IsRequired)> Properties)>();
 
         foreach (var syntaxTree in compilation.SyntaxTrees) {
             var semanticModel = compilation.GetSemanticModel(syntaxTree);
@@ -62,6 +62,9 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
             foreach (var classDecl in root.DescendantNodes().OfType<ClassDeclarationSyntax>()) {
                 var typeSymbol = semanticModel.GetDeclaredSymbol(classDecl);
                 if (typeSymbol == null || typeSymbol.IsAbstract || typeSymbol.TypeKind != TypeKind.Class)
+                    continue;
+                var fullTypeName = typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                if (eligibleTypeDictionary.ContainsKey(fullTypeName))
                     continue;
 
                 // Check exclusion
@@ -73,11 +76,12 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
 
                 // Check for at least one valid [Inject*] property
                 var injectProperties = GetInjectProperties(typeSymbol, semanticModel, classDecl, context);
-                eligibleTypes.Add((typeSymbol, injectProperties));
+                eligibleTypeDictionary.Add(fullTypeName, (typeSymbol, injectProperties));
             }
         }
 
         // Sort eligible types for consistent output
+        var eligibleTypes = eligibleTypeDictionary.Values.ToList();
         eligibleTypes.Sort((a, b) => string.CompareOrdinal(a.TypeSymbol.ToDisplayString(), b.TypeSymbol.ToDisplayString()));
 
         // For each context class, generate code
@@ -129,7 +133,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
                                              {
                                      """);
 
-            if (eligibleTypes.Count == 0) {
+            if (eligibleTypeDictionary.Count == 0) {
                 codeBuilder.AppendLine($"            return null; // No eligible types found for context '{contextClassName}'.");
                 var diagnostic = Diagnostic.Create(DiagnosticDescriptors.NoEligibleTypes, classSyntax.GetLocation(), contextClassName);
                 context.ReportDiagnostic(diagnostic);
