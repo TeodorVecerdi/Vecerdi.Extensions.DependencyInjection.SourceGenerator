@@ -73,8 +73,6 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
 
                 // Check for at least one valid [Inject*] property
                 var injectProperties = GetInjectProperties(typeSymbol, semanticModel, classDecl, context);
-                if (injectProperties.Count == 0)
-                    continue;
                 eligibleTypes.Add((typeSymbol, injectProperties));
             }
         }
@@ -98,6 +96,8 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
                 context.ReportDiagnostic(diagnostic);
             }
 
+            var typeNames = new Dictionary<string, string>();
+            var usedTypeNames = new HashSet<string>();
             var namespaceName = contextSymbol.ContainingNamespace.IsGlobalNamespace ? null : contextSymbol.ContainingNamespace.ToDisplayString();
             var contextClassName = contextSymbol.Name;
 
@@ -139,8 +139,9 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
                                                    {
                                        """);
                 foreach (var (type, _) in eligibleTypes) {
+                    var typeName = GetUniqueTypeName(type, typeNames, usedTypeNames);
                     var typeFullName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat).Replace("global::", "");
-                    codeBuilder.AppendLine($"""                "{typeFullName}" => {type.Name}Injector.Instance,""");
+                    codeBuilder.AppendLine($"""                "{typeFullName}" => {typeName}Injector.Instance,""");
                 }
 
                 codeBuilder.AppendLine("                _ => null");
@@ -151,7 +152,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
 
             // Generate nested injector classes
             foreach (var (type, properties) in eligibleTypes) {
-                var typeName = type.Name;
+                var typeName = GetUniqueTypeName(type, typeNames, usedTypeNames);
                 var injectorClassName = $"{typeName}Injector";
                 var typeFullName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
@@ -163,34 +164,39 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
                                   public static readonly {{injectorClassName}} Instance = new();
                                   public void Inject(IServiceProvider serviceProvider, object instance)
                                   {
-                                      var typedInstance = ({{typeFullName}})instance;
                       """);
 
-                foreach (var (prop, key, isRequired) in properties) {
-                    var propType = prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                    var propName = prop.Name;
+                if (properties.Count == 0) {
+                    codeBuilder.AppendLine($"                // No injectable properties found for type '{typeName}'.");
+                } else {
+                    codeBuilder.AppendLine($"                var typedInstance = ({typeFullName})instance;");
 
-                    var keyLiteral = FormatAsCSharpLiteral(key);
+                    foreach (var (prop, key, isRequired) in properties) {
+                        var propType = prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                        var propName = prop.Name;
 
-                    string getService;
-                    if (key == null) {
-                        getService = $"serviceProvider.GetService(typeof({propType}))";
-                    } else {
-                        getService = $"(serviceProvider as IKeyedServiceProvider)?.GetKeyedService(typeof({propType}), {keyLiteral})";
-                    }
+                        var keyLiteral = FormatAsCSharpLiteral(key);
 
-                    codeBuilder.AppendLine($"                var {propName}Service = {getService};");
-                    if (isRequired) {
-                        codeBuilder.AppendLine($"""
-                                                                if ({propName}Service == null)
-                                                                    throw new InvalidOperationException("Required service {propType} is not registered.");
-                                                """);
-                        codeBuilder.AppendLine($"                typedInstance.{propName} = ({propType}){propName}Service;");
-                    } else {
-                        codeBuilder.AppendLine($"""
-                                                                if ({propName}Service != null)
-                                                                    typedInstance.{propName} = ({propType}){propName}Service;
-                                                """);
+                        string getService;
+                        if (key == null) {
+                            getService = $"serviceProvider.GetService(typeof({propType}))";
+                        } else {
+                            getService = $"(serviceProvider as IKeyedServiceProvider)?.GetKeyedService(typeof({propType}), {keyLiteral})";
+                        }
+
+                        codeBuilder.AppendLine($"                var {propName}Service = {getService};");
+                        if (isRequired) {
+                            codeBuilder.AppendLine($"""
+                                                                    if ({propName}Service == null)
+                                                                        throw new InvalidOperationException("Required service {propType} is not registered.");
+                                                    """);
+                            codeBuilder.AppendLine($"                typedInstance.{propName} = ({propType}){propName}Service;");
+                        } else {
+                            codeBuilder.AppendLine($"""
+                                                                    if ({propName}Service != null)
+                                                                        typedInstance.{propName} = ({propType}){propName}Service;
+                                                    """);
+                        }
                     }
                 }
 
@@ -210,6 +216,23 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
             var generatedCode = codeBuilder.ToString();
             context.AddSource($"{contextClassName}.g.cs", SourceText.From(generatedCode, Encoding.UTF8));
         }
+    }
+
+    private static string GetUniqueTypeName(INamedTypeSymbol typeSymbol, Dictionary<string, string> typeMap, HashSet<string> usedTypeNames) {
+        var fullTypeName = typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        if (typeMap.TryGetValue(fullTypeName, out var typeName)) {
+            return typeName;
+        }
+
+        typeName = typeSymbol.Name;
+        var i = 1;
+        while (usedTypeNames.Contains(typeName)) {
+            typeName = $"{typeName}{i++}";
+        }
+
+        usedTypeNames.Add(typeName);
+        typeMap[fullTypeName] = typeName;
+        return typeName;
     }
 
     // Helper: Format object? as C# literal for codegen
