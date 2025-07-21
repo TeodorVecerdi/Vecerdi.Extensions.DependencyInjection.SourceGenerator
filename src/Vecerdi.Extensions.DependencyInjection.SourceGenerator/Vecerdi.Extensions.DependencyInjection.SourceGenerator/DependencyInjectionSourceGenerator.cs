@@ -17,12 +17,6 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
     private const string InjectFromKeyedServicesAttributeName = "InjectFromKeyedServicesAttribute";
     private const string ExcludeFromInjectionGenerationAttributeName = "ExcludeFromInjectionGenerationAttribute";
 
-    private static readonly DiagnosticDescriptor s_InvalidProperty = new("VDI001", "Invalid property", "Type '{0}' has [Inject] properties without setters; skipping generation", "Warning", DiagnosticSeverity.Warning, true);
-    private static readonly DiagnosticDescriptor s_UnsupportedGenericContext = new("VDI002", "Unsupported generic context class", "Generic context class '{}' is not supported; skipping", "Warning", DiagnosticSeverity.Warning, true);
-    private static readonly DiagnosticDescriptor s_MultipleContexts = new("VDI003", "Multiple contexts found", "Multiple injection contexts found; ensure they don't conflict", "Info", DiagnosticSeverity.Info, true);
-    private static readonly DiagnosticDescriptor s_NoEligibleTypes = new("VDI004", "No eligible types found", "No eligible types found for context '{0}'", "Info", DiagnosticSeverity.Info, true);
-    private static readonly DiagnosticDescriptor s_InaccessibleProperty = new("VDI005", "Inaccessible property", "[Inject] property '{0}' in type '{1}' has inaccessible setter (must be public, internal, or protected internal); skipping property", "Warning", DiagnosticSeverity.Warning, true);
-
     public void Initialize(IncrementalGeneratorInitializationContext context) {
         // Filter for partial classes that inherit from TypeInjectorResolverContext
         var contextClassProvider = context.SyntaxProvider
@@ -81,7 +75,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
                 // All must have setters (not init-only)
                 if (injectProperties.Any(p => p.Property.SetMethod == null || p.Property.SetMethod.IsInitOnly)) {
                     // Warn: Type has [Inject] but lacks setters
-                    var diagnostic = Diagnostic.Create(s_InvalidProperty, classDecl.GetLocation(), typeSymbol.Name);
+                    var diagnostic = Diagnostic.Create(DiagnosticDescriptors.PropertyHasNoSetter, classDecl.GetLocation(), typeSymbol.Name);
                     context.ReportDiagnostic(diagnostic);
                     continue;
                 }
@@ -100,14 +94,14 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
 
             // Resilience: Skip if generic (add support later if needed)
             if (contextSymbol.TypeParameters.Length > 0) {
-                var diagnostic = Diagnostic.Create(s_UnsupportedGenericContext, classSyntax.GetLocation(), contextSymbol.Name);
+                var diagnostic = Diagnostic.Create(DiagnosticDescriptors.UnsupportedGenericContext, classSyntax.GetLocation(), contextSymbol.Name);
                 context.ReportDiagnostic(diagnostic);
                 continue;
             }
 
             // Resilience: Warn if multiple contexts (informational)
             if (contextClassTuples.Length > 1) {
-                var diagnostic = Diagnostic.Create(s_MultipleContexts, classSyntax.GetLocation());
+                var diagnostic = Diagnostic.Create(DiagnosticDescriptors.MultipleContexts, classSyntax.GetLocation());
                 context.ReportDiagnostic(diagnostic);
             }
 
@@ -149,7 +143,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
                 // Resilience: Handle empty case
                 codeBuilder.AppendLine($"            return null; // No eligible types found for context '{contextClassName}'.");
                 // Optional warning
-                var diagnostic = Diagnostic.Create(s_NoEligibleTypes, classSyntax.GetLocation(), contextClassName);
+                var diagnostic = Diagnostic.Create(DiagnosticDescriptors.NoEligibleTypes, classSyntax.GetLocation(), contextClassName);
                 context.ReportDiagnostic(diagnostic);
             } else {
                 codeBuilder.AppendLine("""
@@ -272,7 +266,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
                     .FirstOrDefault(p => semanticModel.GetDeclaredSymbol(p)?.Name == prop.Name);
                 var location = propSyntax?.GetLocation() ?? classDecl.GetLocation();
 
-                var diagnostic = Diagnostic.Create(s_InaccessibleProperty, location, prop.Name, typeSymbol.Name);
+                var diagnostic = Diagnostic.Create(DiagnosticDescriptors.InaccessibleProperty, location, prop.Name, typeSymbol.Name);
                 context.ReportDiagnostic(diagnostic);
                 continue;
             }
