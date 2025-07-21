@@ -50,6 +50,9 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
     }
 
     private static void GenerateCode(SourceProductionContext context, Compilation compilation, ImmutableArray<(ClassDeclarationSyntax ClassSyntax, bool IsContextClass)> contextClassTuples) {
+        if (contextClassTuples.IsEmpty)
+            return;
+
         // Collect all eligible types in the compilation
         var eligibleTypes = new List<(INamedTypeSymbol TypeSymbol, List<(IPropertySymbol Property, object? Key, bool IsRequired)> Properties)>();
 
@@ -93,7 +96,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
             if (contextSymbol == null) continue;
 
             // Resilience: Skip if generic (add support later if needed)
-            if (contextSymbol.TypeParameters.Length > 0) {
+            if (contextSymbol.IsGenericType || contextSymbol.TypeParameters.Length > 0) {
                 var diagnostic = Diagnostic.Create(DiagnosticDescriptors.UnsupportedGenericContext, classSyntax.GetLocation(), contextSymbol.Name);
                 context.ReportDiagnostic(diagnostic);
                 continue;
