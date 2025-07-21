@@ -1,4 +1,4 @@
-# Vecerdi.Extensions.DependencyInjection.SourceGenerator
+# Source Generator for Vecerdi.Extensions.DependencyInjection
 
 A C# source generator that replaces reflection-based dependency injection with compile-time generated code for optimal performance in Unity projects. This source generator works in conjunction with [Vecerdi.Extensions.DependencyInjection](https://github.com/TeodorVecerdi/Vecerdi.Extensions.DependencyInjection) to provide zero-reflection service injection.
 
