@@ -264,68 +264,71 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
 
     // Helper: Get properties with exactly one [Inject] or [InjectFromKeyedServices], extracting params
     private static List<(IPropertySymbol Property, object? Key, bool IsRequired)> GetInjectProperties(INamedTypeSymbol typeSymbol, SemanticModel semanticModel, ClassDeclarationSyntax classDecl, SourceProductionContext context) {
-        var results = new List<(IPropertySymbol, object?, bool)>();
+        var results = new List<(IPropertySymbol Property, object? Key, bool IsRequired)>();
+        var processedPropertyNames = new HashSet<string>(); // To avoid duplicates (e.g., overrides)
 
-        foreach (var prop in typeSymbol.GetMembers().OfType<IPropertySymbol>()) {
-            if (prop.IsStatic) continue;
+        // Collect all properties, including inherited
+        var currentType = typeSymbol;
+        while (currentType != null) {
+            foreach (var prop in currentType.GetMembers().OfType<IPropertySymbol>()) {
+                if (prop.IsStatic) continue;
+                // Skip if already processed in a derived type
+                if (!processedPropertyNames.Add(prop.Name))
+                    continue;
 
-            var attributes = prop.GetAttributes()
-                .Where(a => a.AttributeClass != null && a.AttributeClass.Name is InjectAttributeName or InjectFromKeyedServicesAttributeName && a.AttributeClass.ContainingNamespace.ToDisplayString() == DefaultNamespace)
-                .ToList();
-            if (attributes.Count == 0) {
-                continue;
-            }
+                var attributes = prop.GetAttributes()
+                    .Where(a => a.AttributeClass is { Name: InjectAttributeName or InjectFromKeyedServicesAttributeName } && a.AttributeClass.ContainingNamespace.ToDisplayString() == DefaultNamespace)
+                    .ToList();
+                if (attributes.Count == 0) {
+                    continue;
+                }
 
-            if (attributes.Count > 1) {
-                // Find property syntax for accurate location
+                // Find property syntax for accurate location (may fail for inherited; fallback to class)
                 var propSyntax = classDecl.DescendantNodes().OfType<PropertyDeclarationSyntax>()
                     .FirstOrDefault(p => semanticModel.GetDeclaredSymbol(p)?.Name == prop.Name);
                 var location = propSyntax?.GetLocation() ?? classDecl.GetLocation();
 
-                var diagnostic = Diagnostic.Create(DiagnosticDescriptors.MultipleInjectAttributes, location, prop.Name, typeSymbol.Name);
-                context.ReportDiagnostic(diagnostic);
-                continue;
+                if (attributes.Count > 1) {
+                    var diagnostic = Diagnostic.Create(DiagnosticDescriptors.MultipleInjectAttributes, location, prop.Name, typeSymbol.Name);
+                    context.ReportDiagnostic(diagnostic);
+                    continue;
+                }
+
+                // Check setter accessibility (must be public, internal, or protected internal for direct access in generated code)
+                var setter = prop.SetMethod;
+                if (setter == null || setter.DeclaredAccessibility is not Accessibility.Public and not Accessibility.Internal and not Accessibility.ProtectedOrInternal) {
+                    var diagnostic = Diagnostic.Create(DiagnosticDescriptors.InaccessibleProperty, location, prop.Name, typeSymbol.Name);
+                    context.ReportDiagnostic(diagnostic);
+                    continue;
+                }
+
+                if (setter.IsInitOnly) {
+                    var diagnostic = Diagnostic.Create(DiagnosticDescriptors.InitOnlyProperty, location, prop.Name, typeSymbol.Name);
+                    context.ReportDiagnostic(diagnostic);
+                    continue;
+                }
+
+                // Extract params from the single attribute
+                var attr = attributes[0];
+                object? key = null;
+                var isRequired = true;
+
+                if (attr.AttributeClass!.Name == InjectAttributeName) {
+                    // Non-keyed: Only isRequired (arg 0)
+                    if (attr.ConstructorArguments.Length > 0)
+                        isRequired = (bool)attr.ConstructorArguments[0].Value!;
+                } else if (attr.AttributeClass.Name == InjectFromKeyedServicesAttributeName) {
+                    // Keyed: serviceKey (arg 0), isRequired (arg 1)
+                    if (attr.ConstructorArguments.Length > 0)
+                        key = attr.ConstructorArguments[0].Value;
+                    if (attr.ConstructorArguments.Length > 1)
+                        isRequired = (bool)attr.ConstructorArguments[1].Value!;
+                }
+
+                results.Add((prop, key, isRequired));
             }
 
-            // Check setter accessibility (must be public, internal, or protected internal for direct access in generated code)
-            var setter = prop.SetMethod;
-            if (setter == null || setter.DeclaredAccessibility is not Accessibility.Public and not Accessibility.Internal and not Accessibility.ProtectedOrInternal) {
-                var propSyntax = classDecl.DescendantNodes().OfType<PropertyDeclarationSyntax>()
-                    .FirstOrDefault(p => semanticModel.GetDeclaredSymbol(p)?.Name == prop.Name);
-                var location = propSyntax?.GetLocation() ?? classDecl.GetLocation();
-
-                var diagnostic = Diagnostic.Create(DiagnosticDescriptors.InaccessibleProperty, location, prop.Name, typeSymbol.Name);
-                context.ReportDiagnostic(diagnostic);
-                continue;
-            }
-
-            if (setter.IsInitOnly) {
-                var propSyntax = classDecl.DescendantNodes().OfType<PropertyDeclarationSyntax>()
-                    .FirstOrDefault(p => semanticModel.GetDeclaredSymbol(p)?.Name == prop.Name);
-                var location = propSyntax?.GetLocation() ?? classDecl.GetLocation();
-                var diagnostic = Diagnostic.Create(DiagnosticDescriptors.InitOnlyProperty, location, prop.Name, typeSymbol.Name);
-                context.ReportDiagnostic(diagnostic);
-                continue;
-            }
-
-            // Extract params from the single attribute
-            var attr = attributes[0];
-            object? key = null;
-            var isRequired = true;
-
-            if (attr.AttributeClass!.Name == InjectAttributeName) {
-                // Non-keyed: Only isRequired (arg 0)
-                if (attr.ConstructorArguments.Length > 0)
-                    isRequired = (bool)attr.ConstructorArguments[0].Value!;
-            } else if (attr.AttributeClass.Name == InjectFromKeyedServicesAttributeName) {
-                // Keyed: serviceKey (arg 0), isRequired (arg 1)
-                if (attr.ConstructorArguments.Length > 0)
-                    key = attr.ConstructorArguments[0].Value;
-                if (attr.ConstructorArguments.Length > 1)
-                    isRequired = (bool)attr.ConstructorArguments[1].Value!;
-            }
-
-            results.Add((prop, key, isRequired));
+            currentType = currentType.BaseType;
         }
 
         return results;
