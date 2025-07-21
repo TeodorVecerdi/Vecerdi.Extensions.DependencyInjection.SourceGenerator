@@ -147,7 +147,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
                                        """);
                 foreach (var (type, _) in eligibleTypes) {
                     var typeFullName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                    codeBuilder.AppendLine($"""                "{typeFullName}" => new {type.Name}Injector(),""");
+                    codeBuilder.AppendLine($"""                "{typeFullName}" => {type.Name}Injector.Instance,""");
                 }
 
                 codeBuilder.AppendLine("                _ => null");
@@ -167,6 +167,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
 
                               private sealed class {{injectorClassName}} : ITypeInjector
                               {
+                                  public static readonly {{injectorClassName}} Instance = new();
                                   public void Inject(IServiceProvider serviceProvider, object instance)
                                   {
                                       var typedInstance = ({{typeFullName}})instance;
