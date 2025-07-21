@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "DebugRoslynSourceGenerator": {
+      "commandName": "DebugRoslynComponent",
+      "targetProject": "../Vecerdi.Extensions.DependencyInjection.SourceGenerator.Sample/Vecerdi.Extensions.DependencyInjection.SourceGenerator.Sample.csproj"
+    }
+  }
+}

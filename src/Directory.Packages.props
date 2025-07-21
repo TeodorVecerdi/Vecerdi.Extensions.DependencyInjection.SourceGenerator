@@ -1,13 +1,18 @@
 <Project>
-  <PropertyGroup>
-    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-  </PropertyGroup>
-  <ItemGroup>
-    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="9.0.7" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="9.0.7" />
-    <PackageVersion Include="JetBrains.Annotations" Version="2025.1.0-eap1" />
-    <PackageVersion Include="Microsoft.Extensions.Options" Version="9.0.7" />
-    <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.7" />
-    <PackageVersion Include="PolySharp" Version="1.15.0" />
-  </ItemGroup>
+    <PropertyGroup>
+        <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageVersion Include="Microsoft.Extensions.Configuration" Version="9.0.7"/>
+        <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="9.0.7"/>
+        <PackageVersion Include="JetBrains.Annotations" Version="2025.1.0-eap1"/>
+        <PackageVersion Include="Microsoft.Extensions.Options" Version="9.0.7"/>
+        <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.7"/>
+        <PackageVersion Include="PolySharp" Version="1.15.0"/>
+
+        <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4"/>
+        <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.3.0"/>
+        <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.3.0"/>
+
+    </ItemGroup>
 </Project>
