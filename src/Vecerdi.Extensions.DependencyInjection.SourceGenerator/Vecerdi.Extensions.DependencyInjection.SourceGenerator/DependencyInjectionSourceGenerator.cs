@@ -146,7 +146,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
                                                    {
                                        """);
                 foreach (var (type, _) in eligibleTypes) {
-                    var typeFullName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                    var typeFullName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat).Replace("global::", "");
                     codeBuilder.AppendLine($"""                "{typeFullName}" => {type.Name}Injector.Instance,""");
                 }
 

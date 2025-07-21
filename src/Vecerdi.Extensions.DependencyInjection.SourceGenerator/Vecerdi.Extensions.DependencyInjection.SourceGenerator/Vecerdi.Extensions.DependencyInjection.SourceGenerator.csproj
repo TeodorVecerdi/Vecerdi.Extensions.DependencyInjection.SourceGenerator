@@ -6,7 +6,7 @@
         <IsPackable>false</IsPackable>
         <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
         <IsRoslynComponent>true</IsRoslynComponent>
-        <PackageVersion>1.2.1</PackageVersion>
+        <PackageVersion>1.2.2</PackageVersion>
         <Version>$(PackageVersion)</Version>
         <AssemblyVersion>$(PackageVersion)</AssemblyVersion>
 
