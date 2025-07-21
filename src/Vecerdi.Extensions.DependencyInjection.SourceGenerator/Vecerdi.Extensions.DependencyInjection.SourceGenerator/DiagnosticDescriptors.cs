@@ -47,4 +47,13 @@ public static class DiagnosticDescriptors {
         DiagnosticSeverity.Warning,
         true
     );
+
+    public static readonly DiagnosticDescriptor MultipleInjectAttributes = new(
+        "VDI0006",
+        "Multiple inject attributes",
+        "Property '{0}' in type '{1}' has multiple [Inject] attributes; only one is allowed",
+        DiagnosticCategory.Usage,
+        DiagnosticSeverity.Error,
+        true
+    );
 }

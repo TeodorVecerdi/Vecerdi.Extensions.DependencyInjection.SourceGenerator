@@ -73,16 +73,8 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
 
                 // Check for at least one valid [Inject*] property with setter
                 var injectProperties = GetInjectProperties(typeSymbol, semanticModel, classDecl, context);
-                if (injectProperties.Count == 0) continue;
-
-                // All must have setters (not init-only)
-                if (injectProperties.Any(p => p.Property.SetMethod == null || p.Property.SetMethod.IsInitOnly)) {
-                    // Warn: Type has [Inject] but lacks setters
-                    var diagnostic = Diagnostic.Create(DiagnosticDescriptors.PropertyHasNoSetter, classDecl.GetLocation(), typeSymbol.Name);
-                    context.ReportDiagnostic(diagnostic);
+                if (injectProperties.Count == 0)
                     continue;
-                }
-
                 eligibleTypes.Add((typeSymbol, injectProperties));
             }
         }
@@ -257,14 +249,27 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
         foreach (var prop in typeSymbol.GetMembers().OfType<IPropertySymbol>()) {
             if (prop.IsStatic) continue;
 
-            // NEW: Check setter accessibility (must be public, internal, or protected internal for direct access in generated code)
+            var attributes = prop.GetAttributes()
+                .Where(a => a.AttributeClass != null && a.AttributeClass.Name is InjectAttributeName or InjectFromKeyedServicesAttributeName && a.AttributeClass.ContainingNamespace.ToDisplayString() == DefaultNamespace)
+                .ToList();
+            if (attributes.Count == 0) {
+                continue;
+            }
+
+            if (attributes.Count > 1) {
+                // Find property syntax for accurate location
+                var propSyntax = classDecl.DescendantNodes().OfType<PropertyDeclarationSyntax>()
+                    .FirstOrDefault(p => semanticModel.GetDeclaredSymbol(p)?.Name == prop.Name);
+                var location = propSyntax?.GetLocation() ?? classDecl.GetLocation();
+
+                var diagnostic = Diagnostic.Create(DiagnosticDescriptors.MultipleInjectAttributes, location, prop.Name, typeSymbol.Name);
+                context.ReportDiagnostic(diagnostic);
+                continue;
+            }
+
+            // Check setter accessibility (must be public, internal, or protected internal for direct access in generated code)
             var setter = prop.SetMethod;
-            if (setter == null ||
-                (setter.DeclaredAccessibility != Accessibility.Public &&
-                 setter.DeclaredAccessibility != Accessibility.Internal &&
-                 setter.DeclaredAccessibility != Accessibility.ProtectedOrInternal)) {
-                // Warn: Inaccessible setter
-                // Find the property's syntax for accurate location (optional but improves UX)
+            if (setter == null || setter.DeclaredAccessibility is not Accessibility.Public and not Accessibility.Internal and not Accessibility.ProtectedOrInternal) {
                 var propSyntax = classDecl.DescendantNodes().OfType<PropertyDeclarationSyntax>()
                     .FirstOrDefault(p => semanticModel.GetDeclaredSymbol(p)?.Name == prop.Name);
                 var location = propSyntax?.GetLocation() ?? classDecl.GetLocation();
@@ -274,17 +279,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
                 continue;
             }
 
-            var attributes = prop.GetAttributes()
-                .Where(a => a.AttributeClass != null &&
-                            a.AttributeClass.ContainingNamespace.ToDisplayString() == DefaultNamespace &&
-                            a.AttributeClass.Name is InjectAttributeName or InjectFromKeyedServicesAttributeName)
-                .ToList();
-
-            if (attributes.Count != 1) {
-                // Skip if 0 or >1 (invalid usage)
-                continue;
-            }
-
+            // Extract params from the single attribute
             var attr = attributes[0];
             object? key = null;
             var isRequired = true;
