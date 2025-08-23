@@ -22,6 +22,7 @@
             CA2012;
             CA1052; <!-- Static holder types should be Static or NotInheritable -->
             CA1000; <!-- Do not declare static members on generic types -->
+            CA1001; <!-- Types that own disposable fields should be disposable -->
             CA1065; <!-- Do not raise exceptions in unexpected locations -->
             CA1002; <!-- Do not expose generic lists -->
             CA1031; <!-- Do not catch general exception types -->
