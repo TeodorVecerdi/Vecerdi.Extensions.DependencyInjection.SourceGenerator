@@ -170,10 +170,11 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
                                   {
                       """);
 
+                const string baseIndent = "                ";
                 if (properties.Count == 0) {
-                    codeBuilder.AppendLine($"                // No injectable properties found for type '{typeName}'.");
+                    codeBuilder.AppendLine($"{baseIndent}// No injectable properties found for type '{typeName}'.");
                 } else {
-                    codeBuilder.AppendLine($"                var typedInstance = ({typeFullName})instance;");
+                    codeBuilder.AppendLine($"{baseIndent}var typedInstance = ({typeFullName})instance;");
 
                     foreach (var (prop, key, isRequired) in properties) {
                         var propType = prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
@@ -181,26 +182,14 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
 
                         var keyLiteral = FormatAsCSharpLiteral(key);
 
-                        string getService;
-                        if (key == null) {
-                            getService = $"serviceProvider.GetService(typeof({propType}))";
-                        } else {
-                            getService = $"(serviceProvider as IKeyedServiceProvider)?.GetKeyedService(typeof({propType}), {keyLiteral})";
-                        }
+                        var getService = (key, isRequired) switch {
+                            (null, false) => $"serviceProvider.GetService<{propType}>()",
+                            (null, true) => $"serviceProvider.GetRequiredService<{propType}>()",
+                            (_, false) => $"serviceProvider.GetKeyedService<{propType}>({keyLiteral})",
+                            (_, true) => $"serviceProvider.GetRequiredKeyedService<{propType}>({keyLiteral})",
+                        };
 
-                        codeBuilder.AppendLine($"                var {propName}Service = {getService};");
-                        if (isRequired) {
-                            codeBuilder.AppendLine($"""
-                                                                    if ({propName}Service == null)
-                                                                        throw new InvalidOperationException("Required service {propType} is not registered.");
-                                                    """);
-                            codeBuilder.AppendLine($"                typedInstance.{propName} = ({propType}){propName}Service;");
-                        } else {
-                            codeBuilder.AppendLine($"""
-                                                                    if ({propName}Service != null)
-                                                                        typedInstance.{propName} = ({propType}){propName}Service;
-                                                    """);
-                        }
+                        codeBuilder.AppendLine($"{baseIndent}typedInstance.{propName} = {getService};");
                     }
                 }
 
@@ -284,8 +273,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
                 }
 
                 // Find property syntax for accurate location (may fail for inherited; fallback to class)
-                var propSyntax = classDecl.DescendantNodes().OfType<PropertyDeclarationSyntax>()
-                    .FirstOrDefault(p => semanticModel.GetDeclaredSymbol(p)?.Name == prop.Name);
+                var propSyntax = classDecl.DescendantNodes().OfType<PropertyDeclarationSyntax>().FirstOrDefault(p => semanticModel.GetDeclaredSymbol(p)?.Name == prop.Name);
                 var location = propSyntax?.GetLocation() ?? classDecl.GetLocation();
 
                 if (attributes.Count > 1) {
