@@ -56,4 +56,13 @@ public static class DiagnosticDescriptors {
         DiagnosticSeverity.Error,
         true
     );
+
+    public static readonly DiagnosticDescriptor KeyedServiceProviderIgnored = new(
+        "VDI0007",
+        "Service key ignored for IServiceProvider",
+        "Property '{0}' in type '{1}' uses [InjectFromKeyedServices] but IServiceProvider injection ignores the service key",
+        DiagnosticCategory.Usage,
+        DiagnosticSeverity.Warning,
+        true
+    );
 }

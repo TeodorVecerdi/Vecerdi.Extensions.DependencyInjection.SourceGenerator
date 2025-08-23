@@ -1,3 +1,11 @@
+## Release 1.4.0
+
+### New Rules
+
+| Rule ID | Category | Severity | Notes                                    |
+|---------|----------|----------|------------------------------------------|
+| VDI0007 | Usage    | Warning  | Service key ignored for IServiceProvider |
+
 ## Release 1.2.0
 
 ### Changed Rules

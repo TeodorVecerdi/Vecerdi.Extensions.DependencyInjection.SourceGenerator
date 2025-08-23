@@ -204,6 +204,7 @@ The source generator provides helpful diagnostics:
 | VDI0004 | Info     | No eligible types found for context          |
 | VDI0005 | Warning  | Property has inaccessible setter             |
 | VDI0006 | Error    | Property has multiple inject attributes      |
+| VDI0007 | Warning  | Service key ignored for IServiceProvider     |
 
 ## Requirements
 

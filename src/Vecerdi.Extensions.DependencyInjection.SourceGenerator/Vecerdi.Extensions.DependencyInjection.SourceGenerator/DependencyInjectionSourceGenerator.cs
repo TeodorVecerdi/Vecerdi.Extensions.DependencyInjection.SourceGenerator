@@ -370,6 +370,12 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
                         isRequired = (bool)attr.ConstructorArguments[1].Value!;
                 }
 
+                // Check for keyed IServiceProvider usage and emit warning
+                if (key != null && prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == "global::System.IServiceProvider") {
+                    var diagnostic = Diagnostic.Create(DiagnosticDescriptors.KeyedServiceProviderIgnored, location, prop.Name, typeSymbol.Name);
+                    context.ReportDiagnostic(diagnostic);
+                }
+
                 results.Add((prop, key, isRequired));
             }
 
