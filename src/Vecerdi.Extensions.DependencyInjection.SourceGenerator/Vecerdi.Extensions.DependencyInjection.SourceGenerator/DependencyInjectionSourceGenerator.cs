@@ -183,6 +183,13 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
 
                         var keyLiteral = FormatAsCSharpLiteral(key);
 
+                        // Check if the property type is IServiceProvider (special case)
+                        if (propType == "global::System.IServiceProvider") {
+                            // Assign the serviceProvider parameter directly, ignore key and isRequired
+                            codeBuilder.AppendLine($"{baseIndent}typedInstance.{propName} = serviceProvider;");
+                            continue;
+                        }
+
                         // Check if the property type is a collection type
                         var (isCollection, elementType, materialization) = GetCollectionInfo(prop.Type);
                         string getService;
