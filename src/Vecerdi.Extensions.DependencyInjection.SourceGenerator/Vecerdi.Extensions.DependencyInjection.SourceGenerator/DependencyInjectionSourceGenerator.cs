@@ -78,13 +78,13 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
 
                 // Check for at least one valid [Inject*] property
                 var injectProperties = GetInjectProperties(typeSymbol, semanticModel, classDecl, context);
-                
+
                 // Skip types that don't inherit from BaseMonoBehaviour and have no injectable properties
                 // This prevents bloating the assembly with no-op injectors for plain MonoBehaviour classes
                 var inheritsFromBaseMonoBehaviour = InheritsFrom(typeSymbol, BaseMonoBehaviourName, DefaultNamespace);
                 if (!inheritsFromBaseMonoBehaviour && injectProperties.Count == 0)
                     continue;
-                
+
                 eligibleTypeDictionary.Add(fullTypeName, (typeSymbol, injectProperties));
             }
         }
