@@ -12,7 +12,9 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
     private const string InfrastructureNamespace = "Vecerdi.Extensions.DependencyInjection.Infrastructure";
     private const string DefaultNamespace = "Vecerdi.Extensions.DependencyInjection";
     private const string ContextBaseClassName = "TypeInjectorResolverContext";
+    private const string MonoBehaviourName = "MonoBehaviour";
     private const string BaseMonoBehaviourName = "BaseMonoBehaviour";
+    private const string UnityEngineNamespace = "UnityEngine";
     private const string InjectAttributeName = "InjectAttribute";
     private const string InjectFromKeyedServicesAttributeName = "InjectFromKeyedServicesAttribute";
     private const string ExcludeFromInjectionGenerationAttributeName = "ExcludeFromInjectionGenerationAttribute";
@@ -71,11 +73,18 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
                 if (typeSymbol.GetAttributes().Any(a => a.AttributeClass?.Name == ExcludeFromInjectionGenerationAttributeName))
                     continue;
 
-                // Check inheritance from BaseMonoBehaviour
-                if (!InheritsFrom(typeSymbol, BaseMonoBehaviourName, DefaultNamespace)) continue;
+                // Check inheritance from MonoBehaviour
+                if (!InheritsFrom(typeSymbol, MonoBehaviourName, UnityEngineNamespace)) continue;
 
                 // Check for at least one valid [Inject*] property
                 var injectProperties = GetInjectProperties(typeSymbol, semanticModel, classDecl, context);
+
+                // Skip types that don't inherit from BaseMonoBehaviour and have no injectable properties
+                // This prevents bloating the assembly with no-op injectors for plain MonoBehaviour classes
+                var inheritsFromBaseMonoBehaviour = InheritsFrom(typeSymbol, BaseMonoBehaviourName, DefaultNamespace);
+                if (!inheritsFromBaseMonoBehaviour && injectProperties.Count == 0)
+                    continue;
+
                 eligibleTypeDictionary.Add(fullTypeName, (typeSymbol, injectProperties));
             }
         }
