@@ -167,11 +167,11 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
                 codeBuilder.AppendLine(
                     """
 
-                        private sealed class NoOpInjector : ITypeInjector
-                        {
-                            public static readonly NoOpInjector Instance = new();
-                            public void Inject(IServiceProvider serviceProvider, object instance) { }
-                        }
+                            private sealed class NoOpInjector : ITypeInjector
+                            {
+                                public static readonly NoOpInjector Instance = new();
+                                public void Inject(IServiceProvider serviceProvider, object instance) { }
+                            }
                     """);
             }
 
