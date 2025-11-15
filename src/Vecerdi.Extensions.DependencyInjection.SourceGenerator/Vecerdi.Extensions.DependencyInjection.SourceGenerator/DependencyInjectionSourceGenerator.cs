@@ -143,10 +143,16 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
                                                    return type.FullName switch
                                                    {
                                        """);
-                foreach (var (type, _) in eligibleTypes) {
+                foreach (var (type, properties) in eligibleTypes) {
                     var typeName = GetUniqueTypeName(type, typeNames, usedTypeNames);
                     var typeFullName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat).Replace("global::", "");
-                    codeBuilder.AppendLine($"""                "{typeFullName}" => {typeName}Injector.Instance,""");
+                    
+                    // Use NoOpInjector for types without injectable properties
+                    if (properties.Count == 0) {
+                        codeBuilder.AppendLine($"""                "{typeFullName}" => NoOpInjector.Instance,""");
+                    } else {
+                        codeBuilder.AppendLine($"""                "{typeFullName}" => {typeName}Injector.Instance,""");
+                    }
                 }
 
                 codeBuilder.AppendLine("                _ => null");
@@ -155,8 +161,25 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
 
             codeBuilder.AppendLine("        }");
 
+            // Generate NoOpInjector if needed
+            var hasNoOpTypes = eligibleTypes.Any(t => t.Properties.Count == 0);
+            if (hasNoOpTypes) {
+                codeBuilder.AppendLine(
+                    """
+
+                        private sealed class NoOpInjector : ITypeInjector
+                        {
+                            public static readonly NoOpInjector Instance = new();
+                            public void Inject(IServiceProvider serviceProvider, object instance) { }
+                        }
+                    """);
+            }
+
             // Generate nested injector classes
             foreach (var (type, properties) in eligibleTypes) {
+                // Skip types without properties since they use NoOpInjector
+                if (properties.Count == 0) continue;
+                
                 var typeName = GetUniqueTypeName(type, typeNames, usedTypeNames);
                 var injectorClassName = $"{typeName}Injector";
                 var typeFullName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
@@ -172,12 +195,9 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
                       """);
 
                 const string baseIndent = "                ";
-                if (properties.Count == 0) {
-                    codeBuilder.AppendLine($"{baseIndent}// No injectable properties found for type '{typeName}'.");
-                } else {
-                    codeBuilder.AppendLine($"{baseIndent}var typedInstance = ({typeFullName})instance;");
+                codeBuilder.AppendLine($"{baseIndent}var typedInstance = ({typeFullName})instance;");
 
-                    foreach (var (prop, key, isRequired) in properties) {
+                foreach (var (prop, key, isRequired) in properties) {
                         var propType = prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
                         var propName = prop.Name;
 
@@ -218,7 +238,6 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
 
                         codeBuilder.AppendLine($"{baseIndent}typedInstance.{propName} = {getService};");
                     }
-                }
 
                 codeBuilder.AppendLine("""
                                                    }
