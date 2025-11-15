@@ -146,7 +146,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
                 foreach (var (type, properties) in eligibleTypes) {
                     var typeName = GetUniqueTypeName(type, typeNames, usedTypeNames);
                     var typeFullName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat).Replace("global::", "");
-                    
+
                     // Use NoOpInjector for types without injectable properties
                     if (properties.Count == 0) {
                         codeBuilder.AppendLine($"""                "{typeFullName}" => NoOpInjector.Instance,""");
@@ -179,7 +179,7 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
             foreach (var (type, properties) in eligibleTypes) {
                 // Skip types without properties since they use NoOpInjector
                 if (properties.Count == 0) continue;
-                
+
                 var typeName = GetUniqueTypeName(type, typeNames, usedTypeNames);
                 var injectorClassName = $"{typeName}Injector";
                 var typeFullName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
@@ -198,46 +198,46 @@ public class DependencyInjectionSourceGenerator : IIncrementalGenerator {
                 codeBuilder.AppendLine($"{baseIndent}var typedInstance = ({typeFullName})instance;");
 
                 foreach (var (prop, key, isRequired) in properties) {
-                        var propType = prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                        var propName = prop.Name;
+                    var propType = prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                    var propName = prop.Name;
 
-                        var keyLiteral = FormatAsCSharpLiteral(key);
+                    var keyLiteral = FormatAsCSharpLiteral(key);
 
-                        // Check if the property type is IServiceProvider (special case)
-                        if (propType == "global::System.IServiceProvider") {
-                            // Assign the serviceProvider parameter directly, ignore key and isRequired
-                            codeBuilder.AppendLine($"{baseIndent}typedInstance.{propName} = serviceProvider;");
-                            continue;
-                        }
-
-                        // Check if the property type is a collection type
-                        var (isCollection, elementType, materialization) = GetCollectionInfo(prop.Type);
-                        string getService;
-                        if (isCollection) {
-                            // Handle collection types
-                            var servicesCall = key switch {
-                                null => $"serviceProvider.GetServices<{elementType}>()",
-                                _ => $"serviceProvider.GetKeyedServices<{elementType}>({keyLiteral})",
-                            };
-
-                            getService = materialization switch {
-                                CollectionMaterialization.None => servicesCall, // IEnumerable<T>
-                                CollectionMaterialization.ToArray => $"{servicesCall}.ToArray()", // T[], IReadOnlyCollection<T>, IReadOnlyList<T>
-                                CollectionMaterialization.ToList => $"{servicesCall}.ToList()", // List<T>, IList<T>, ICollection<T>
-                                _ => throw new ArgumentOutOfRangeException(nameof(materialization), materialization, null),
-                            };
-                        } else {
-                            // Handle single service types (existing logic)
-                            getService = (key, isRequired) switch {
-                                (null, false) => $"serviceProvider.GetService<{propType}>()",
-                                (null, true) => $"serviceProvider.GetRequiredService<{propType}>()",
-                                (_, false) => $"serviceProvider.GetKeyedService<{propType}>({keyLiteral})",
-                                (_, true) => $"serviceProvider.GetRequiredKeyedService<{propType}>({keyLiteral})",
-                            };
-                        }
-
-                        codeBuilder.AppendLine($"{baseIndent}typedInstance.{propName} = {getService};");
+                    // Check if the property type is IServiceProvider (special case)
+                    if (propType == "global::System.IServiceProvider") {
+                        // Assign the serviceProvider parameter directly, ignore key and isRequired
+                        codeBuilder.AppendLine($"{baseIndent}typedInstance.{propName} = serviceProvider;");
+                        continue;
                     }
+
+                    // Check if the property type is a collection type
+                    var (isCollection, elementType, materialization) = GetCollectionInfo(prop.Type);
+                    string getService;
+                    if (isCollection) {
+                        // Handle collection types
+                        var servicesCall = key switch {
+                            null => $"serviceProvider.GetServices<{elementType}>()",
+                            _ => $"serviceProvider.GetKeyedServices<{elementType}>({keyLiteral})",
+                        };
+
+                        getService = materialization switch {
+                            CollectionMaterialization.None => servicesCall, // IEnumerable<T>
+                            CollectionMaterialization.ToArray => $"{servicesCall}.ToArray()", // T[], IReadOnlyCollection<T>, IReadOnlyList<T>
+                            CollectionMaterialization.ToList => $"{servicesCall}.ToList()", // List<T>, IList<T>, ICollection<T>
+                            _ => throw new ArgumentOutOfRangeException(nameof(materialization), materialization, null),
+                        };
+                    } else {
+                        // Handle single service types (existing logic)
+                        getService = (key, isRequired) switch {
+                            (null, false) => $"serviceProvider.GetService<{propType}>()",
+                            (null, true) => $"serviceProvider.GetRequiredService<{propType}>()",
+                            (_, false) => $"serviceProvider.GetKeyedService<{propType}>({keyLiteral})",
+                            (_, true) => $"serviceProvider.GetRequiredKeyedService<{propType}>({keyLiteral})",
+                        };
+                    }
+
+                    codeBuilder.AppendLine($"{baseIndent}typedInstance.{propName} = {getService};");
+                }
 
                 codeBuilder.AppendLine("""
                                                    }
