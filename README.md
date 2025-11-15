@@ -12,7 +12,7 @@ A C# source generator that replaces reflection-based dependency injection with c
 
 ## How It Works
 
-The source generator analyzes your code and automatically generates optimized `ITypeInjector` implementations for classes that inherit from `BaseMonoBehaviour` and have properties marked with `[Inject]` or `[InjectFromKeyedServices]` attributes.
+The source generator analyzes your code and automatically generates optimized `ITypeInjector` implementations for classes that inherit from `MonoBehaviour` and have properties marked with `[Inject]` or `[InjectFromKeyedServices]` attributes.
 
 Instead of using reflection at runtime, the generator creates concrete code that directly sets your properties with the resolved services.
 
@@ -103,12 +103,14 @@ static void SetupDependencyInjection()
 
 ### 3. Use Injection Attributes
 
-Mark your properties for injection in classes that inherit from `BaseMonoBehaviour`:
+Mark your properties for injection in classes that inherit from `MonoBehaviour`:
 
 ```csharp
+using UnityEngine;
+
 namespace MyProject
 {
-    public class PlayerController : BaseMonoBehaviour
+    public class PlayerController : MonoBehaviour
     {
         [Inject] public IGameSettings GameSettings { get; set; }
         [Inject] public ILogger Logger { get; set; }
@@ -128,6 +130,12 @@ namespace MyProject
         [InjectFromKeyedServices("combat")] public IEnumerable<IAbility> CombatAbilities { get; set; }
         [InjectFromKeyedServices("ui")] public List<IUIComponent> UIComponents { get; set; }
         
+        void Awake()
+        {
+            // Inject services manually or use BaseMonoBehaviour for automatic injection
+            this.InjectServices();
+        }
+        
         void Start()
         {
             // All services are injected automatically with zero reflection!
@@ -138,6 +146,8 @@ namespace MyProject
     }
 }
 ```
+
+> **Note**: If you inherit from `BaseMonoBehaviour` instead of `MonoBehaviour`, services will be injected automatically in the `Awake()` method without needing to call `this.InjectServices()` manually.
 
 ## Generated Code Example
 
@@ -211,15 +221,17 @@ The source generator provides helpful diagnostics:
 - Properties marked for injection must have public, internal, or protected internal setters
 - Properties cannot be init-only
 - Only one injection attribute per property (`[Inject]` or `[InjectFromKeyedServices]`)
-- Target classes must inherit from `BaseMonoBehaviour`
+- Target classes must inherit from `MonoBehaviour` (directly or indirectly, such as through `BaseMonoBehaviour`)
 
 ## Excluding Types from Generation
 
 Use the `[ExcludeFromInjectionGeneration]` attribute to exclude specific types:
 
 ```csharp
+using UnityEngine;
+
 [ExcludeFromInjectionGeneration]
-public class SpecialController : BaseMonoBehaviour
+public class SpecialController : MonoBehaviour
 {
     [Inject] public IService Service { get; set; }
     // This class will use reflection-based injection
