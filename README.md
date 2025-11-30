@@ -139,9 +139,9 @@ namespace MyProject
         void Start()
         {
             // All services are injected automatically with zero reflection!
-            Logger.Log($"Player speed: {GameSettings.PlayerSpeed}");
-            Logger.Log($"Loaded {InputHandlers.Count()} input handlers");
-            Logger.Log($"Loaded {AudioSources.Count} audio sources");
+            Logger.LogInformation("Player speed: {Speed}", GameSettings.PlayerSpeed);
+            Logger.LogInformation("Loaded {Handlers} input handlers", InputHandlers.Count());
+            Logger.LogInformation("Loaded {Sources} audio sources", AudioSources.Count);
         }
     }
 }
